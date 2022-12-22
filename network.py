@@ -4,14 +4,14 @@ import numpy as np
 
 from tensorflow import *
 from keras.models import Model
-from keras.layers import Input, Dense, LSTM, Conv1D, BatchNormalization, Dropout, MaxPooling1D, Flatten
+from keras.layers import Input, Dense, LSTM, BatchNormalization
 from keras.optimizers import SGD, RMSprop
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'        # INFO and WARNING messages are not printed
 
 
 class LSTMNetwork :
-    def __init__(self, input_dim=0, output_dim=0, num_steps=1, lr=0.001, activation='sigmoid', loss='mse') :
+    def __init__(self, input_dim=0, output_dim=0, shared_network=None, num_steps=1, lr=0.001, activation='linear', loss='mse') :
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.num_steps = num_steps
@@ -19,9 +19,15 @@ class LSTMNetwork :
         self.activation = activation
         self.loss = loss
         self.model = None
+        self.shared_network = shared_network
 
-        input = Input((self.input_dim))
-        output = self.get_network_head(input).output
+        if self.shared_network is None :
+            input = shared_network.input
+            output = self.shared_network.output
+        else :
+            input = Input((self.input_dim))
+            output = self.get_network_head(input).output
+
         output = Dense(self.output_dim, activation=self.activation, kernel_initializer='random_normal')(output)
         self.model = Model(input, output)
         self.model.compile(optimizer=SGD(learning_rate=self.lr), loss=self.loss)
@@ -57,3 +63,4 @@ class LSTMNetwork :
         output = BatchNormalization()(output)
         return Model(input, output)
     
+
