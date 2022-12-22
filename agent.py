@@ -70,7 +70,6 @@ class Agent :
         self.profitloss = 0
         self.avg_position_price = 0
         self.position = 1
-
         self.num_long = 0
         self.num_short = 0
         self.num_hold = 0
@@ -107,25 +106,6 @@ class Agent :
         
         if pred_policy is not None :
             confidence = pred_policy[action]
-        return action, confidence, exploration
-
-    # value network를 통한 action 결정 (Critic Network)
-    def decide_action_by_value(self, pred_value, epsilon) :
-        confidence = .5
-        if pred_value is None :
-            epsilon = 1
-        elif (pred_value == np.max(pred_value)).all() :    # 값이 모두 같은 경우 탐험
-            epsilon = 1
-        # 탐험 결정
-        if np.random.rand() < epsilon :
-            exploration = True
-            action = np.random.randint(self.NUM_ACTIONS)
-        else:
-            exploration = False
-            action = np.argmax(pred_value)
-
-        if pred_value is not None:
-            confidence = utils.sigmoid(pred_value[action])
         return action, confidence, exploration
 
     # 결정된 Action(Long, Short)을 수행할 수 있는 최소 조건을 확인
