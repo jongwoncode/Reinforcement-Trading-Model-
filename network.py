@@ -1,66 +1,67 @@
 import os
+import time
 import threading
+import random
 import numpy as np
+import tensorflow as tf
 
-from tensorflow import *
-from keras.models import Model
-from keras.layers import Input, Dense, LSTM, BatchNormalization
-from keras.optimizers import SGD, RMSprop
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'        # INFO and WARNING messages are not printed
+from tensorflow.compat.v1.train import AdamOptimizer
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import LSTM, Dense, Input, Concatenate
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 
-class LSTMNetwork :
-    def __init__(self, input_dim=0, output_dim=0, shared_network=None, num_steps=1, lr=0.001, activation='linear', loss='mse') :
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.num_steps = num_steps
-        self.lr = lr
-        self.activation = activation
-        self.loss = loss
-        self.model = None
-        self.shared_network = shared_network
 
-        if self.shared_network is None :
-            input = shared_network.input
-            output = self.shared_network.output
-        else :
-            input = Input((self.input_dim))
-            output = self.get_network_head(input).output
+# ActorCritic 인공신경망
+class LSTM_DNN_AC(tf.keras.Model) :
+    def __init__(self, action_size, n_steps, state_size, balance_size) :
+        super(LSTM_DNN_AC, self).__init__()
+        self.action_size = action_size
+        self.n_steps = n_steps
+        self.state_size = state_size
+        self.balance_size = balance_size
 
-        output = Dense(self.output_dim, activation=self.activation, kernel_initializer='random_normal')(output)
-        self.model = Model(input, output)
-        self.model.compile(optimizer=SGD(learning_rate=self.lr), loss=self.loss)
-
-    def predict(self, sample) :
-        sample = np.array(sample).reshape((1, self.num_steps, self.input_dim))
-        pred = self.model.predict_on_batch(sample).flatten()
-        return pred
-        
-    def train_on_batch(self, x, y) :
-        loss = 0.
-        x = np.array(x).reshape((-1, self.num_stpes, self.input_dim))
-        history = self.model.fit(x, y, epochs=10, verbose=False)
-        loss += np.sum(history.history['loss'])
-        return loss
+        # chart_state : (n_steps, chart_columns) ex) (5, 28)
+        self.lstm1 = LSTM(128, activation='tanh', dropout= 0.3, return_sequences=True)
+        self.lstm2 = LSTM(64, activation = 'tanh', dropout = 0.3, return_sequences=True)
+        self.lstm3 = LSTM(16, activation = 'tanh', return_sequences=False)
+        # balance_state : (balance_info) ex) (4)
+        self.dnn1 = Dense(64, activation='relu')
+        self.dnn2 = Dense(16, activation='relu')
+        # concatenate & shared network
+        self.concatenate = Concatenate()
+        self.shared_fc = Dense(128, activation='relu')
+        # Actor part
+        self.poilcy1 = Dense(32, activation='relu')
+        self.policy = Dense(action_size, activation='linear')
+        # Critic part
+        self.value1 = Dense(32, activation='relu')
+        self.value = Dense(1, activation='linear')
     
-    def save_model(self, model_path) :
-        if model_path is not None and self.model is not None :
-            self.model.save_weights(model_path, overwrite=True) 
-        
-    def load_model(self, model_path) :
-        if model_path is not None :
-            self.model.load_weights(model_path)
+    def call(self, inputs) :
+        # LSTM PART
+        c_inp = inputs[0]
+        c = self.lstm1(c_inp)
+        c = self.lstm2(c)
+        c = self.lstm3(c)
+        # DNN PART
+        b_inp = inputs[1]
+        b = self.dnn1(b_inp)
+        b = self.dnn2(b)
+        # CONCATENATE & SHARED PART -> (...chart, ...balance) (16+16, )
+        shared = self.concatenate([c, b])
+        shared = self.shared_fc(shared)
+        # ACTOR PART
+        policy = self.poilcy1(shared)
+        policy = self.policy(policy)
+        # CRITIC PART
+        value = self.value1(shared)
+        value = self.value(value)
+        return policy, value
 
-    def get_network_head(input) :
-        output = LSTM(256, dropout=0.1, return_sequences=True, kernel_initializer='random_normal')(input)
-        output = BatchNormalization()(output)
-        output = LSTM(128, dropout=0.1, return_sequences=True, kernel_initializer='random_normal')(output)
-        output = BatchNormalization()(output)
-        output = LSTM(64, dropout=0.1, return_sequences=True, kernel_initializer='random_normal')(output)
-        output = BatchNormalization()(output)
-        output = LSTM(32, dropout=0.1, return_sequences=True, kernel_initializer='random_normal')(output)
-        output = BatchNormalization()(output)
-        return Model(input, output)
-    
+    # Subclassing API에서 plot_model을 그리기 위해서 build_graph 메서드 생성
+    def build_graph(self) :
+        c_inp = Input(shape= (self.n_steps, self.state_size), dtype=tf.float32)
+        b_inp = Input(shape= (self.balance_size, ), dtype=tf.float32)
+        return Model(inputs=[c_inp, b_inp], outputs=self.call([c_inp, b_inp]))
 
