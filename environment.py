@@ -15,7 +15,7 @@ Environment : 선물 거래를 염두한 행동 전략(long-short 배팅 가능)
             * [SHORT position] mean_position_price_(t) - close_price_()
         
     [Slippage]
-        1. 훈련 단계에서는 Slippage 적용.           (아직 미반영)
+        1. 훈련 단계에서는 Slippage 적용. (현재 미적용)     
         2. 실제 거래 단계에서는 api를 통해 실제 balance를 조회하여 적용.
 '''
 

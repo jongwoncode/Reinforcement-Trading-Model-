@@ -1,0 +1,2 @@
+model_checkpoint_path: "LSTM_DNN"
+all_model_checkpoint_paths: "LSTM_DNN"

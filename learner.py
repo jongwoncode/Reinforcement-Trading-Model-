@@ -1,7 +1,8 @@
 import os
 import time
+import utils
 import threading
-import random
+import logging
 import numpy as np
 import tensorflow as tf
 
@@ -10,21 +11,23 @@ from environment import Environment
 
 
 # 멀티쓰레딩을 위한 글로벌 변수
-global episode, trading_return_avg, trading_return_max
-episode, trading_return_avg, trading_return_max = 0, 0, 0
-num_episode = 100
+global episode
+episode= 0
+num_episode = 2000
+logger = logging.getLogger(utils.LOGGER_NAME)
 
 # 액터러너 클래스 (쓰레드)
 class Learner(threading.Thread):
     global_episode = 0
 
-    def __init__(self, chart_data, training_data, initial_balance, 
+    def __init__(self, code, chart_data, training_data, initial_balance, 
                     min_trading_price, max_trading_price,
                     action_size, n_steps, chart_size, balance_size, 
                     global_model, optimizer, discount_factor, writer):
         threading.Thread.__init__(self)
 
         # A3CAgent 클래스에서 넘겨준 하이퍼 파라미터 설정
+        self.code = code
         self.action_size = action_size
         self.n_steps = n_steps
         self.chart_size = chart_size
@@ -135,17 +138,15 @@ class Learner(threading.Thread):
 
     def run(self):
         # 액터러너끼리 공유해야하는 글로벌 변수
-        global episode, trading_return_avg, trading_return_max
+        global episode
         step = 0
         while episode < num_episode :
-            trading_return = 0
             print('episode : ', episode)
             # 환경 초기화 및 초기 관찰값 확인
             self.env.reset()
             c_state, b_state, _, done = self.env.step(None, None)
 
             while not done :
-                print(self.t_max, self.t)
                 step += 1
                 self.t += 1
                 # 정책 확률에 따라 행동을 선택
@@ -154,11 +155,9 @@ class Learner(threading.Thread):
                 c_next_state, b_next_state, reward, done = self.env.step(action, policy)
                 # 정책확률의 최대값
                 self.avg_p_max += np.amax(policy.numpy())
-                trading_return += reward
                 # 샘플을 저장 : (s_t, a_t, r_t)
                 self.append_sample(c_state, b_state, action, reward)
                 c_state, b_state = c_next_state, b_next_state
-
                 # batch 생성시 모델 훈련
                 if self.t >= self.t_max or done :
                     # (done=True) : episode 종료or-50% 손실/(t>=t_max) : 최대 타임스텝 수에 도달(=batch size)
@@ -168,14 +167,11 @@ class Learner(threading.Thread):
                 # episode 종료시 학습 정보를 기록
                 if done :
                     episode += 1
-                    trading_return_max = trading_return if trading_return > trading_return_max else trading_return_max
-                    trading_return_avg = 0.9 * trading_return_avg + 0.1 * trading_return if trading_return_avg != 0 else trading_return
-
-                    log = "episode: {:5d} | trading_return : {:4.1f} | ".format(episode, trading_return)
-                    log += "trading_return max : {:4.1f} | ".format(trading_return_max)
-                    log += "trading_return avg : {:.3f}".format(trading_return_avg)
-                    print('log : ', log)
-                    self.draw_tensorboard(trading_return, step, episode)
+                    logger.debug(f'[{self.code}][Epoch {episode}/{num_episode}] '
+                        f'#Buy:{self.env.num_long} #Sell:{self.env.num_short} #Hold:{self.env.num_hold} '
+                        f'#Stocks:{self.env.num_stocks} PV:{self.env.portfolio_value:,.0f} '
+                        f'profitloss:{self.env.profitloss:.6f}')
+                    self.draw_tensorboard(self.env.profitloss, step, episode)
                     self.avg_p_max = 0
                     step = 0
 

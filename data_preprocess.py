@@ -109,14 +109,14 @@ def make_sequence_data(chart, training, window_size=5) :
     return df_chart, np.array(seqeunce_list)
 
     
-def load_data(code, date_from, date_to, n_steps) :
+def load_data(code, start_date, end_date, n_steps) :
     df = pd.read_csv(os.path.join(utils.BASE_DIR, 'data', f'{code}.csv'), thousands=',', converters={'Date' : lambda x : str(x)})
     # sorting Date and reset index
     df = df.sort_values(by='Date').reset_index(drop=True)
     df = preprocess(df)
     # change datetime notation
     df['Date'] = df['Date'].str.replace('-', '')
-    df = df[(df['Date'] >= date_from) & (df['Date'] <= date_to)]
+    df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
     # df = df.fillna(method='ffill').reset_index(drop=True)
     
     # Remove NaN rows (Because of forward span(52-1+26-1))
