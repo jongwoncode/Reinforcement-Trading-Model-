@@ -64,7 +64,7 @@ class Learner(threading.Thread):
         c_observed = tf.reshape(c_observed, shape= [-1, np.shape(c_observed)[0], np.shape(c_observed)[1]])
         b_observed = tf.reshape(b_observed, shape= [-1, np.shape(b_observed)[0]])
         policy = self.local_model([c_observed, b_observed])[0][0]
-        policy = tf.nn.softmax(policy)
+        policy = tf.convert_to_tensor(utils.softmax(policy))
         action_index = np.random.choice(self.action_size, 1, p=policy.numpy())[0]
         return action_index, policy
 
@@ -106,7 +106,7 @@ class Learner(threading.Thread):
 
         # 정책 신경망 업데이트
         action = tf.convert_to_tensor(self.actions, dtype=tf.float32)
-        policy_prob = tf.nn.softmax(policy)
+        policy_prob = tf.convert_to_tensor(utils.softmax(policy))
         action_prob = tf.reduce_sum(action * policy_prob, axis=1, keepdims=True)
         cross_entropy = - tf.math.log(action_prob + 1e-10)
         actor_loss = tf.reduce_sum(cross_entropy * tf.stop_gradient(advantages))
