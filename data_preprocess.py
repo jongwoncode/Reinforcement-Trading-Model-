@@ -1,7 +1,9 @@
 import os
+import warnings
 import pandas as pd
 import numpy as np
 import utils
+warnings.filterwarnings(action='ignore')
 
 COLUMNS_CHART_DATA = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']
 COLUMNS_TRADING_DATA =['close_ema15_ratio', 'volume_ema15_ratio', 'close_ema33_ratio', 'volume_ema33_ratio', 
@@ -95,19 +97,35 @@ def preprocess(data) :
     return data
 
 
-def load_data(code, date_from, date_to) :
+def make_sequence_data(chart, training, window_size=5) :
+    chart_columns = chart.columns
+    chart_list, seqeunce_list = [], []
+
+    for i in range(len(training)-window_size) :
+        seqeunce_list.append(np.array(training.iloc[i:i+window_size]))
+        chart_list.append(np.array(chart.iloc[i+window_size-1]))
+    
+    df_chart = pd.DataFrame(chart_list, columns=chart_columns) 
+    return df_chart, np.array(seqeunce_list)
+
+    
+def load_data(code, date_from, date_to, n_steps) :
     df = pd.read_csv(os.path.join(utils.BASE_DIR, 'data', f'{code}.csv'), thousands=',', converters={'Date' : lambda x : str(x)})
-    # date 오름차순 정렬 및 전처리
+    # sorting Date and reset index
     df = df.sort_values(by='Date').reset_index(drop=True)
     df = preprocess(df)
-    # 기간 필터링
+    # change datetime notation
     df['Date'] = df['Date'].str.replace('-', '')
     df = df[(df['Date'] >= date_from) & (df['Date'] <= date_to)]
     # df = df.fillna(method='ffill').reset_index(drop=True)
     
-    # 선행스팬 고려 (52-1+26-1)
+    # Remove NaN rows (Because of forward span(52-1+26-1))
     df = df.iloc[76:, :]
-    # 차트 데이터/학습 데이터 분리
+    
+    # Split orginal / preprocess column
     chart_data = df[COLUMNS_CHART_DATA]
     training_data = df[COLUMNS_TRADING_DATA]
+
+    # Make sequence set for LSTM Network input
+    chart_data, training_data = make_sequence_data(chart_data, training_data, window_size=n_steps)
     return chart_data, training_data
