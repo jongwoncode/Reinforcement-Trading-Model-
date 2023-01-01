@@ -48,8 +48,6 @@ class Learner(threading.Thread):
         # k-타임스텝 값 설정(= batch)
         self.t_max = 15
         self.t = 0
-        # 불필요한 행동을 줄여주기 위한 dictionary
-        self.action_dict = {0:1, 1:2, 2:3, 3:3}
 
     # 텐서보드에 학습 정보를 기록
     def draw_tensorboard(self, trading_return, step, e):
@@ -160,7 +158,7 @@ class Learner(threading.Thread):
                 c_state, b_state = c_next_state, b_next_state
                 # batch 생성시 모델 훈련
                 if self.t >= self.t_max or done :
-                    # (done=True) : episode 종료or-50% 손실/(t>=t_max) : 최대 타임스텝 수에 도달(=batch size)
+                    # (done=True) : episode 종료or-80% 손실/(t>=t_max) : 최대 타임스텝 수에 도달(=batch size)
                     self.train_model(done)
                     self.t = 0
 

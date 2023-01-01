@@ -305,8 +305,8 @@ class Environment() :
             c_next_state = self.training_data[self.idx]
             b_next_state = (self.ratio_hold, self.profitloss, avg_return, self.position)
             done = False
-            # 전체 손실이 초기 투자금 태비, -50% 이면 epoch 종료. 
-            if self.portfolio_value < self.initial_balance*0.5 :
+            # 원금 대비 -20% 손실 나면 epoch 종료. 
+            if self.portfolio_value < self.initial_balance*0.20 :
                 done = True
             return c_next_state, b_next_state, reward, done
   
