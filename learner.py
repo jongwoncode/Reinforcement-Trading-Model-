@@ -4,6 +4,7 @@ import utils
 import threading
 import logging
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 
 from network import LSTM_DNN_AC
@@ -15,6 +16,7 @@ global episode
 episode= 0
 num_episode = 2000
 logger = logging.getLogger(utils.LOGGER_NAME)
+test_logger = logging.getLogger(utils.TEST_LOGGER_NAME)
 
 # 액터러너 클래스 (쓰레드)
 class Learner(threading.Thread):
@@ -23,9 +25,12 @@ class Learner(threading.Thread):
     def __init__(self, code, chart_data, training_data, initial_balance, 
                     min_trading_price, max_trading_price,
                     action_size, n_steps, chart_size, balance_size, 
-                    global_model, optimizer, discount_factor, writer):
+                    global_model, optimizer, discount_factor):
         threading.Thread.__init__(self)
-
+        
+        # 데이터 저장시 사용 
+        self.start_date = chart_data.iloc[0, 0]
+        self.end_date = chart_data.iloc[-1, 0]
         # A3CAgent 클래스에서 넘겨준 하이퍼 파라미터 설정
         self.code = code
         self.action_size = action_size
@@ -40,22 +45,12 @@ class Learner(threading.Thread):
         # 환경, 로컬신경망, 텐서보드 생성
         self.local_model = LSTM_DNN_AC(action_size, n_steps, chart_size, balance_size)
         self.env = Environment(chart_data, training_data, n_steps, initial_balance, min_trading_price, max_trading_price)
-        self.writer = writer
 
         # 학습 정보를 기록할 변수
-        self.avg_p_max = 0
         self.avg_loss = 0
         # k-타임스텝 값 설정(= batch)
         self.t_max = 15
         self.t = 0
-
-    # 텐서보드에 학습 정보를 기록
-    def draw_tensorboard(self, trading_return, step, e):
-        avg_p_max = self.avg_p_max / float(step)
-        with self.writer.as_default():
-            tf.summary.scalar('Total Reward/Episode', trading_return, step=e)
-            tf.summary.scalar('Average Max Prob/Episode', avg_p_max, step=e)
-            tf.summary.scalar('Duration/Episode', step, step=e)
 
     # 정책신경망의 출력을 받아 확률적으로 행동을 선택
     def get_action(self, c_observed, b_observed) :
@@ -137,7 +132,6 @@ class Learner(threading.Thread):
     def run(self):
         # 액터러너끼리 공유해야하는 글로벌 변수
         global episode
-        step = 0
         while episode < num_episode :
             print('episode : ', episode)
             # 환경 초기화 및 초기 관찰값 확인
@@ -145,14 +139,11 @@ class Learner(threading.Thread):
             c_state, b_state, _, done = self.env.step(None, None)
 
             while not done :
-                step += 1
                 self.t += 1
                 # 정책 확률에 따라 행동을 선택
                 action, policy = self.get_action(c_state, b_state)
                 # 선택한 행동으로 환경에서 한 타임스텝 진행
                 c_next_state, b_next_state, reward, done = self.env.step(action, policy)
-                # 정책확률의 최대값
-                self.avg_p_max += np.amax(policy.numpy())
                 # 샘플을 저장 : (s_t, a_t, r_t)
                 self.append_sample(c_state, b_state, action, reward)
                 c_state, b_state = c_next_state, b_next_state
@@ -169,8 +160,33 @@ class Learner(threading.Thread):
                         f'#Buy:{self.env.num_long} #Sell:{self.env.num_short} #Hold:{self.env.num_hold} '
                         f'#Stocks:{self.env.num_stocks} PV:{self.env.portfolio_value:,.0f} '
                         f'profitloss:{self.env.profitloss:.6f}')
-                    self.draw_tensorboard(self.env.profitloss, step, episode)
-                    self.avg_p_max = 0
-                    step = 0
 
 
+    def test(self) :
+        # 메모리 생성
+        memory = []
+        # 환경 초기화 및 초기 관찰값 확인
+        self.env.reset()
+        c_state, b_state, _, done = self.env.step(None, None)
+        while not done :
+            # 행동 전 가격, 현재 포지션 정보 기록
+            memo_dict = {'close' : self.env.get_price(), 'position' : self.env.position}
+            # 정책 확률에 따라 행동을 선택
+            action, policy = self.get_action(c_state, b_state)
+            # 선택한 행동으로 환경에서 한 타임스텝 진행
+            c_next_state, b_next_state, reward, done = self.env.step(action, policy)
+            # 행동, 행동 후 상태 정보기록
+            memo_dict.update({'action' : action, 'action_confidence' : policy[action].numpy(),
+                                'reward' : reward, 'num_stocks' : self.env.num_stocks,  'pv' : self.env.portfolio_value})
+            # 메모리에 저장
+            memory.append(memo_dict)
+            # 다음 상태를 현재 상태로 업데이트
+            c_state, b_state = c_next_state, b_next_state
+            # episode 종료시 학습 정보를 기록
+            if done :
+                test_logger.debug(f'[{self.code}][TEST] '
+                    f'#Buy:{self.env.num_long} #Sell:{self.env.num_short} #Hold:{self.env.num_hold} '
+                    f'#Stocks:{self.env.num_stocks} PV:{self.env.portfolio_value:,.0f} '
+                    f'profitloss:{self.env.profitloss:.6f}')
+            # 학습정보 저장
+                pd.DataFrame(memory).to_csv(os.path.join(utils.BASE_DIR, 'test', f'{self.code}_{self.start_date}_{self.end_date}.csv'), index=False)

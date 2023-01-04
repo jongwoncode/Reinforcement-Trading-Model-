@@ -13,7 +13,8 @@ if __name__ == "__main__" :
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', default=utils.get_time_str())
     parser.add_argument('--code', type=str, default='005380')
-    parser.add_argument('--start_date', default='20190101')
+    parser.add_argument('--mode', choices=['train', 'test', 'update'], default='train')
+    parser.add_argument('--start_date', default='20180601')
     parser.add_argument('--end_date', default='20221220')
     parser.add_argument('--lr', type=float, default=0.0001)
     parser.add_argument('--n_steps', type=int, default=5)
@@ -25,8 +26,9 @@ if __name__ == "__main__" :
 
     # 출력 경로 생성
     output_path = os.path.join(utils.BASE_DIR, 'log', 'rltrader')
-    log_path = os.path.join(output_path, f'{output_name}.log')
 
+    log_path = os.path.join(output_path, f'{output_name}.log') if args.mode in ['train', 'update'] else os.path.join(output_path, f'test_{output_name}.log')
+    logger_name = utils.LOGGER_NAME if args.mode in ['train', 'update'] else utils.TEST_LOGGER_NAME 
     # output directory 없다면 생성
     if not os.path.isdir(output_path):
         os.makedirs(output_path)
@@ -41,7 +43,7 @@ if __name__ == "__main__" :
 
     # log 기록을 위한 logger 설정
     logging.basicConfig(format='%(message)s')
-    logger = logging.getLogger(utils.LOGGER_NAME)
+    logger = logging.getLogger(logger_name)
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
     stream_handler = logging.StreamHandler(sys.stdout)
@@ -60,14 +62,33 @@ if __name__ == "__main__" :
 
     # network에 학습으로 입력될 feature들의 개수 설정(chart_size=24, balance_size=4)
     chart_size, balance_size = trading_data.shape[2], 4
+    
     # 최소/최대 단일 매매 금액 설정
     min_trading_price, max_trading_price = 500000, 3000000
+    
 
     # Agent 학습 파라미터 설정
     agent_params = {'code' :args.code, 'n_steps' : args.n_steps, 'chart_size' : chart_size, 'balance_size' :balance_size, 
                         'action_size' : 3, 'chart_data' : chart_data, 'training_data' :trading_data, 
                         'initial_balance' : args.balance, 'min_trading_price' : min_trading_price, 
                         'max_trading_price' : max_trading_price, 'lr' : args.lr}
-    # As
-    global_agent = A3CAgent(**agent_params)
-    global_agent.train()
+
+
+    # 모델 학습 모드에 따른 실행
+    # 모델 훈련
+    if args.mode == 'train' :
+        agent_params.update({'reuse_model' : False})
+        global_agent = A3CAgent(**agent_params)
+        global_agent.train()
+    # 모델 업데이트
+    elif args.mode == 'update' :
+        agent_params.update({'reuse_model' : True})
+        global_agent = A3CAgent(**agent_params)
+        global_agent.train()
+    # 모델 테스트
+    elif args.mode == 'test' :
+        agent_params.update({'reuse_model' : True})
+        global_agent = A3CAgent(**agent_params)
+        global_agent.test()
+
+

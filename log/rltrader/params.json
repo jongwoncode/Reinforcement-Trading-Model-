@@ -1,1 +1,1 @@
-{"name": "20230101111803", "code": "005380", "start_date": "20190101", "end_date": "20221220", "lr": 0.0001, "n_steps": 5, "balance": 100000000}
+{"name": "202301041240", "code": "005380", "mode": "update", "start_date": "20180601", "end_date": "20221220", "lr": 0.0001, "n_steps": 5, "balance": 100000000}
