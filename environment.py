@@ -37,7 +37,8 @@ class Environment() :
     ACTIONS = [ACTION_SHORT, ACTION_HOLD, ACTION_LONG]
     NUM_ACTIONS = len(ACTIONS)                            
     CLOSE_IDX = 4
-    def __init__(self, chart_data, training_data, n_steps, initial_balance, min_trading_price, max_trading_price) :
+
+    def __init__(self, chart_data, training_data, initial_balance, min_trading_price, max_trading_price) :
         #___초기 자본금 설정
         self.initial_balance = initial_balance
 
@@ -48,7 +49,6 @@ class Environment() :
         #___chart : chart 정보
         self.chart_data = chart_data
         self.training_data = training_data
-        self.n_steps = n_steps
         self.observation = None
         self.idx = -1
 
@@ -93,9 +93,16 @@ class Environment() :
     # 결정된 Action(Long, Short)을 수행할 수 있는 최소 조건을 확인
     def validate_action(self, action) :
         if action == Environment.ACTION_LONG :
-            # 적어도 1주를 살 수 있는지 확인
-            if self.balance < self.get_price() * (1 + self.TRADING_CHARGE) :
-                return False
+            # 숏 포지션일 때는 PV로 확인 (공매도 잔량 + balance 확인)
+            if self.position == Environment.SHORT_POSITION :
+                if self.portfolio_value < self.get_price() * (1 + self.TRADING_CHARGE) :
+                    return False
+            
+            # 롱 or 무포지션일 때는 balance로 구매할 수 있는 자금 확인
+            else :
+                # 적어도 1주를 살 수 있는지 확인
+                if self.balance < self.get_price() * (1 + self.TRADING_CHARGE) :
+                    return False
         elif action == Environment.ACTION_SHORT :
             # 적어도 1주를 short할 수 있는지 확인
             if self.portfolio_value < self.get_price() * (1 + self.TRADING_CHARGE) :
@@ -105,7 +112,7 @@ class Environment() :
     # Action을 수행할 수 있을 때 진입 포지션의 양을 반환해주는 함수.
     def decide_trading_unit(self, confidence):
         if np.isnan(confidence) :
-            return self.min_trading_price
+            return max(int(self.min_trading_price/self.get_price()), 1)
         added_trading_price = max(min(int(confidence*(self.max_trading_price-self.min_trading_price)), 
                                             self.max_trading_price-self.min_trading_price), 0)
         trading_price = self.min_trading_price + added_trading_price
@@ -115,6 +122,7 @@ class Environment() :
     # input : policy에 출력된 action과 confidence
     # output : 현재까지 수익률(reward & return) 
     def act(self, action, confidence):
+        trading_unit = 0 
         # action을 수행할 수 있는지 잔고 확인 -> 수행할 수 없다면 HOLD 포지션.
         if not self.validate_action(action) :
             action = Environment.ACTION_HOLD
@@ -142,14 +150,14 @@ class Environment() :
                 if trading_amount > 0 :
                     self.avg_position_price = curr_price    # 평균 포지션 가격 업데이트
                     self.balance -= trading_amount          # 보유 현금을 갱신
-                    self.num_long += 1                      # long 횟수 증가
                     # (1.2.5.1) LONG 진입 : 보유 주식수 추가
                     if action == Environment.ACTION_LONG :     
                         self.num_stocks += trading_unit
+                        self.num_long += 1      # 매수 횟수 추가
                     # (1.2.5.2) SHORT 진입 : 보유 주식수 차감 
                     elif action == Environment.ACTION_SHORT :
                         self.num_stocks -= trading_unit
-
+                        self.num_short += 1     # 매도 횟수 추가
         # (2) 현재 LONG 포지션(num_stocks > 0)
         elif self.position == Environment.LONG_POSITION :
             # (2.1) LONG 진입
@@ -272,9 +280,14 @@ class Environment() :
             self.position = Environment.NONE_POSITION
 
         # (5) 포트폴리오 가치 갱신
-        self.portfolio_value = self.balance + curr_price * abs(self.num_stocks)
+        if self.position in [Environment.LONG_POSITION, Environment.NONE_POSITION]  :
+            self.portfolio_value = self.balance + curr_price * abs(self.num_stocks)
+        else :
+            self.portfolio_value = self.balance + (self.avg_position_price - curr_price) * abs(self.num_stocks) \
+                                                + self.avg_position_price*abs(self.num_stocks)
+
         self.profitloss = self.portfolio_value / self.initial_balance - 1
-        return self.profitloss
+        return self.profitloss, trading_unit
 
 
     # input  : agent's action space
@@ -284,21 +297,21 @@ class Environment() :
         # 다음 훈련 데이터가 없을 경우.
         if (np.array(observation) == None).all() :
             done = True
-            return None, None, 0, done
+            return None, None, 0, done, None
         # 훈련 시작 전 초기 데이터 반환
         if action == None :
             avg_return = (self.avg_position_price / self.get_price()) - 1
             c_next_state = self.training_data[self.idx]
             b_next_state = (self.ratio_hold, self.profitloss, avg_return, self.position)
             done = False
-            return c_next_state, b_next_state, 0, done
+            return c_next_state, b_next_state, 0, done, None
         
         # agent의 행동에 대해서 다음 환경 정보를 반환
         else :
             # action에 대한 신뢰도 계산
             confidence = policy[action]
             # 행동 수행 및 보상 출력
-            reward = self.act(action, confidence)
+            reward, trading_unit = self.act(action, confidence)
             # 현재 종가 대비 평균 수익률
             avg_return = (self.avg_position_price / self.get_price()) - 1
             # chart state, balance state 계산
@@ -308,6 +321,6 @@ class Environment() :
             # 원금 대비 -20% 손실 나면 epoch 종료. 
             if self.portfolio_value < self.initial_balance*0.20 :
                 done = True
-            return c_next_state, b_next_state, reward, done
+            return c_next_state, b_next_state, reward, done, trading_unit
   
 

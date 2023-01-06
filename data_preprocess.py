@@ -109,7 +109,7 @@ def make_sequence_data(chart, training, window_size=5) :
     return df_chart, np.array(seqeunce_list)
 
     
-def load_data(code, start_date, end_date, n_steps) :
+def load_data(code, model, start_date, end_date, n_steps) :
     df = pd.read_csv(os.path.join(utils.BASE_DIR, 'data', f'{code}.csv'), thousands=',', converters={'Date' : lambda x : str(x)})
     # sorting Date and reset index
     df = df.sort_values(by='Date').reset_index(drop=True)
@@ -117,15 +117,19 @@ def load_data(code, start_date, end_date, n_steps) :
     # change datetime notation
     df['Date'] = df['Date'].str.replace('-', '')
     df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
-    # df = df.fillna(method='ffill').reset_index(drop=True)
-    
+    df = df.fillna(method='ffill').reset_index(drop=True)
+
     # Remove NaN rows (Because of forward span(52-1+26-1))
     df = df.iloc[76:, :]
     
     # Split orginal / preprocess column
     chart_data = df[COLUMNS_CHART_DATA]
     training_data = df[COLUMNS_TRADING_DATA]
+    
+    # Make sequence set for LSTM Network input(LSTMDNN 모델은 추가 데이터 전처리가 필요)
+    if model == 'LSTMDNN' :
+        chart_data, training_data = make_sequence_data(chart_data, training_data, window_size=n_steps)
+    elif model == 'DNN' :
+        training_data = np.array(training_data)
 
-    # Make sequence set for LSTM Network input
-    chart_data, training_data = make_sequence_data(chart_data, training_data, window_size=n_steps)
     return chart_data, training_data

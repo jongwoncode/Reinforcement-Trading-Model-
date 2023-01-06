@@ -10,10 +10,11 @@ from learner import *
 
 # 브레이크아웃에서의 A3CAgent 클래스 (글로벌신경망)
 class A3CAgent():
-    def __init__(self, code, n_steps, chart_size, balance_size, action_size, reuse_model=None, chart_data=None, training_data=None, 
-                initial_balance=100000000, min_trading_price=100000, max_trading_price=1000000,
-                lr=1e-4):
+    def __init__(self, code, model, n_steps, chart_size, balance_size, action_size, reuse_model=None, 
+                    chart_data=None, training_data=None, initial_balance=100000000, 
+                    min_trading_price=100000, max_trading_price=1000000, lr=1e-4):
         self.code = code
+        self.model = model
         self.chart_data = chart_data 
         self.training_data = training_data
         self.initial_balance = initial_balance
@@ -29,15 +30,27 @@ class A3CAgent():
         # 쓰레드의 갯수
         self.threads = 16
         # 전역 신경망 생성
-        self.global_model = LSTM_DNN_AC(action_size, n_steps, chart_size, balance_size)
-        # 전역 신경망 가중치 초기화 input : [chart_columns_shape, balance_state_shape]
-        inputs = [tf.TensorShape((None, n_steps, chart_size)), tf.TensorShape((None, balance_size))]
-        self.global_model.build(inputs)
+        if self.model == 'LSTMDNN' :
+            self.global_model = LSTM_DNN_AC(action_size, n_steps, chart_size, balance_size)
+            # 모델 입력 데이터 정의 : [(n_steps, chart_columns_shape), balance_state_shape]
+            inputs = [tf.TensorShape((None, n_steps, chart_size)), tf.TensorShape((None, balance_size))]
+            # 모델 할당 및 전역 신경망 가중치 초기화 
+            self.global_model.build(inputs)
+            # 모델 가중치 저장 경로 설정
+            self.model_path = os.path.join(utils.BASE_DIR, 'model', self.model, f'{self.model}_{n_steps}')
+        
+        if self.model == 'DNN' :
+            self.global_model = DNN_AC(action_size, chart_size, balance_size)
+            # 모델 입력 데이터 정의 : [chart_columns_shape, balance_state_shape]
+            inputs = [tf.TensorShape((None, chart_size)), tf.TensorShape((None, balance_size))]
+            # 모델 할당 및 전역 신경망 가중치 초기화 
+            self.global_model.build(inputs)
+            # 모델 가중치 저장 경로 설정
+            self.model_path = os.path.join(utils.BASE_DIR, 'model', self.model, self.model)
+        
         # 인공신경망 업데이트하는 옵티마이저 함수 생성
         self.optimizer = AdamOptimizer(self.lr, use_locking=True)
-        # 모델 가중치 저장 경로 설정
-        self.model_path = os.path.join(utils.BASE_DIR, 'save_model', 'LSTM_DNN')
-
+        
         # 모델 업데이트시 저장한 모델 재 사용
         if reuse_model :
             self.global_model.load_weights(self.model_path)
@@ -45,7 +58,7 @@ class A3CAgent():
     # 쓰레드를 만들어 학습을 하는 함수
     def train(self):
         # 쓰레드 수 만큼 Runner 클래스 생성
-        runners = [Learner(self.code, self.chart_data, self.training_data, self.initial_balance, self.min_trading_price, 
+        runners = [Learner(self.code, self.model, self.chart_data, self.training_data, self.initial_balance, self.min_trading_price, 
                             self.max_trading_price, self.action_size, self.n_steps, self.chart_size, 
                             self.balance_size, self.global_model, self.optimizer, 
                             self.discount_factor) for _ in range(self.threads)]
@@ -60,9 +73,17 @@ class A3CAgent():
             time.sleep(60 * 10)
     
     def test(self) :
-        runner = Learner(self.code, self.chart_data, self.training_data, self.initial_balance, self.min_trading_price, 
+        runner = Learner(self.code, self.model, self.chart_data, self.training_data, self.initial_balance, self.min_trading_price, 
                             self.max_trading_price, self.action_size, self.n_steps, self.chart_size, 
                             self.balance_size, self.global_model, self.optimizer, 
                             self.discount_factor)
         print('START TEST')
         runner.test()
+    
+    def monkey(self) :
+        runner = Learner(self.code, self.model, self.chart_data, self.training_data, self.initial_balance, self.min_trading_price, 
+                            self.max_trading_price, self.action_size, self.n_steps, self.chart_size, 
+                            self.balance_size, self.global_model, self.optimizer, 
+                            self.discount_factor)
+        print('START MONKEY')
+        runner.monkey()

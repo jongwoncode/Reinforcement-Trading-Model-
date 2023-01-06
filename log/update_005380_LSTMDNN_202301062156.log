@@ -1,0 +1,17 @@
+{"name": "202301062156", "code": "005380", "model": "LSTMDNN", "mode": "update", "start_date": "20220601", "end_date": "20221220", "lr": 4e-05, "n_steps": 10, "balance": 100000000}
+[005380][Epoch 1/20000] #Buy:29 #Sell:14 #Hold:8 #Stocks:159 PV:97,419,724 profitloss:-0.025803
+[005380][Epoch 2/20000] #Buy:17 #Sell:16 #Hold:18 #Stocks:28 PV:96,422,525 profitloss:-0.035775
+[005380][Epoch 3/20000] #Buy:21 #Sell:13 #Hold:17 #Stocks:88 PV:99,225,065 profitloss:-0.007749
+[005380][Epoch 4/20000] #Buy:25 #Sell:12 #Hold:14 #Stocks:136 PV:98,728,497 profitloss:-0.012715
+[005380][Epoch 5/20000] #Buy:25 #Sell:13 #Hold:13 #Stocks:129 PV:97,541,589 profitloss:-0.024584
+[005380][Epoch 6/20000] #Buy:17 #Sell:17 #Hold:17 #Stocks:23 PV:99,792,468 profitloss:-0.002075
+[005380][Epoch 7/20000] #Buy:26 #Sell:14 #Hold:11 #Stocks:125 PV:98,590,825 profitloss:-0.014092
+[005380][Epoch 8/20000] #Buy:21 #Sell:16 #Hold:14 #Stocks:74 PV:97,980,010 profitloss:-0.020200
+[005380][Epoch 9/20000] #Buy:20 #Sell:15 #Hold:16 #Stocks:63 PV:97,303,314 profitloss:-0.026967
+[005380][Epoch 10/20000] #Buy:26 #Sell:15 #Hold:10 #Stocks:124 PV:99,151,470 profitloss:-0.008485
+[005380][Epoch 11/20000] #Buy:25 #Sell:11 #Hold:15 #Stocks:135 PV:97,085,189 profitloss:-0.029148
+[005380][Epoch 12/20000] #Buy:21 #Sell:13 #Hold:17 #Stocks:87 PV:97,707,593 profitloss:-0.022924
+[005380][Epoch 13/20000] #Buy:28 #Sell:12 #Hold:11 #Stocks:162 PV:97,811,018 profitloss:-0.021890
+[005380][Epoch 14/20000] #Buy:22 #Sell:16 #Hold:13 #Stocks:77 PV:96,863,603 profitloss:-0.031364
+[005380][Epoch 15/20000] #Buy:23 #Sell:14 #Hold:14 #Stocks:91 PV:94,684,294 profitloss:-0.053157
+[005380][Epoch 16/20000] #Buy:23 #Sell:12 #Hold:16 #Stocks:120 PV:98,931,865 profitloss:-0.010681

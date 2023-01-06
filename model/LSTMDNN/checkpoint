@@ -1,0 +1,2 @@
+model_checkpoint_path: "LSTMDNN_10"
+all_model_checkpoint_paths: "LSTMDNN_10"
