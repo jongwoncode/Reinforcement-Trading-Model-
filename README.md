@@ -44,13 +44,14 @@
         <br>
 
         * **AC의 정책신경망(Actor Network) 파라미터 업데이트 수식**
+
             $$
                 \theta_{t+1}:= \theta_{t} + \alpha\left [\bigtriangledown_{\theta}\log\pi_{\theta}(a|s)Q_{w}(s,a))\right ]\\
 
-                \theta : \;actor\; network\; parameter \\
-                \qquad w : \;value\; network\; parameter
+                \theta :   actor   network   parameter \\
+                \qquad w :   value   network   parameter
             $$ 
-            - $Loss function$ = $Policy\;Network$ 출력의 $Cross\;Entropy$ $\times$ $Critic\;Network$의 출력
+            - $Loss function$ = $Policy  Network$ 출력의 $Cross    Entropy$ $\times$ $Critic    Network$의 출력
     
     <br>
 
@@ -66,21 +67,25 @@
         <br>
 
         * **Advantage의 정의**
+
             $$
-                Advantage = Action\;Value\;function(Q\;function) - Value\;function \\ 
+                Advantage = Action  Value  function(Q  function) - Value  function \\ 
                 A(s_{t}, a_{t}) = Q_{w}(s_{t}, a_{t})-V_{v}(s_{t})
             $$
 
         * **TD error**
-            - $advantage$ 에서 $Q$함수와 $V$함수를 각각 근사하려면 비효율적임. $TD\; error$의 개념을 적용하여 $Q$함수를 $V$와 $reward$로 변환
+            - $advantage$ 에서 $Q$함수와 $V$함수를 각각 근사하려면 비효율적임. $TD   error$의 개념을 적용하여 $Q$함수를 $V$와 $reward$로 변환
+
             $$
-                TD\; Error : \delta_{v} = R_{t+1} + rV_{v}(S_{t+1}) -V_v(S_t)
+                TD   Error : \delta_{v} = R_{t+1} + rV_{v}(S_{t+1}) -V_v(S_t)
             $$
+
             $$
-                Critic\;parameter\; update : MSE =(R_{t+1} + rV_{v}(S_{t+1}) -V_v(S_t))^{2} = \delta_{v}^{2}
+                Critic  parameter   update : MSE =(R_{t+1} + rV_{v}(S_{t+1}) -V_v(S_t))^{2} = \delta_{v}^{2}
             $$
+
             $$
-                Actor\; parameter\; update :  \theta_{t+1}:= \theta_{t} + \alpha\left [\bigtriangledown_{\theta}\log\pi_{\theta}(a|s)\delta_{v})\right ]
+                Actor   parameter   update :  \theta_{t+1}:= \theta_{t} + \alpha\left [\bigtriangledown_{\theta}\log\pi_{\theta}(a|s)\delta_{v})\right ]
             
             $$
 
@@ -88,14 +93,14 @@
 
 * **On-policy 방식 알고리즘**
     * 주어진 $state$에 대해 $action$을 결정하는 $policy$가 존재하는 알고리즘.
-    * $DQN$의 $off\; policy$ 부분을 개선.
+    * $DQN$의 $off    policy$ 부분을 개선.
 
 <br>
 
 * **Global Network & Replay Memory**
     * 각 Actor Learner는 각기 다른 환경에서 학습을 진행하기 때문에 학습 샘플들의 연관성을 낮을 수 있는 장점이 있음.
-        - $DQN$의 $Replay\;Memory$의 아이디어를 활용하였고, 현재 $policy$ 기반의 의사결정에 의한 데이터를 저장할 수 있음.
-    * 각 $Actor Learner$는 일정 횟수$(batch, time step)$를 탐색 하고 탐색 데이터를 활용하여 $global\; network$를 업데이트 한뒤 자신$(local\; network)$을 $global\; network$로 업데이트 함.  
+        - $DQN$의 $Replay   Memory$의 아이디어를 활용하였고, 현재 $policy$ 기반의 의사결정에 의한 데이터를 저장할 수 있음.
+    * 각 $Actor Learner$는 일정 횟수$(batch, time step)$를 탐색 하고 탐색 데이터를 활용하여 $global    network$를 업데이트 한뒤 자신$(local    network)$을 $global    network$로 업데이트 함.  
 
 
 <br>
