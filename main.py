@@ -17,7 +17,7 @@ if __name__ == "__main__" :
     parser.add_argument('--mode', choices=['train', 'test', 'update', 'monkey'], default='train')
     parser.add_argument('--start_date', default='20180601')
     parser.add_argument('--end_date', default='20221220')
-    parser.add_argument('--lr', type=float, default=0.00004)
+    parser.add_argument('--lr', type=float, default=0.0001)
     parser.add_argument('--n_steps', type=int, default=10)
     parser.add_argument('--balance', type=int, default=100000000)
     args = parser.parse_args()
