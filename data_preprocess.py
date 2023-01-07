@@ -14,6 +14,7 @@ COLUMNS_TRADING_DATA =['close_ema15_ratio', 'volume_ema15_ratio', 'close_ema33_r
                         'close_min52_ratio', 'close_fspan1_ratio', 'close_fspan2_ratio',
                         'bbupper_close_ratio', 'close_bblower_ratio', 'std20_mean20_ratio']
 
+# 시가, 종가, 고가, 저가, 거래량 데이터를 통해 기술적 지표 구현
 def preprocess(data) :
     # 데이터 전처리
     '''
@@ -96,7 +97,7 @@ def preprocess(data) :
     data['std20_mean20_ratio'] = data['std20']/data['mean20']
     return data
 
-
+# LSTMDNN Network 학습을 위한 time step 데이터 생성
 def make_sequence_data(chart, training, window_size=5) :
     chart_columns = chart.columns
     chart_list, seqeunce_list = [], []
@@ -108,7 +109,8 @@ def make_sequence_data(chart, training, window_size=5) :
     df_chart = pd.DataFrame(chart_list, columns=chart_columns) 
     return df_chart, np.array(seqeunce_list)
 
-    
+
+# 원본 데이터 수집 및 조건에 따른 전처리 진행 후 반환 함수.
 def load_data(code, model, start_date, end_date, n_steps) :
     df = pd.read_csv(os.path.join(utils.BASE_DIR, 'data', f'{code}.csv'), thousands=',', converters={'Date' : lambda x : str(x)})
     # sorting Date and reset index

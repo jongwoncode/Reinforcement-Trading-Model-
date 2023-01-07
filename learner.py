@@ -58,6 +58,7 @@ class Learner(threading.Thread):
         self.t_max = 16
         self.t = 0
 
+    # 입력 데이터를 각 모델 입력 데이터에 맞게 변환 시켜주는 함수.
     def reshape_state(self, c_observed, b_observed) : 
         c_dim, b_dim = np.ndim(c_observed), np.ndim(b_observed)
         if self.model == 'LSTMDNN' :
@@ -68,7 +69,7 @@ class Learner(threading.Thread):
         return c_observed, b_observed
 
 
-    # 정책신경망의 출력을 받아 확률적으로 행동을 선택
+    # [train, update] : 정책신경망의 출력을 받아 확률적으로 행동을 선택
     def get_action(self, c_observed, b_observed) :
         c_observed, b_observed = self.reshape_state(c_observed, b_observed)
         policy = self.local_model([c_observed, b_observed])[0][0]
@@ -76,7 +77,7 @@ class Learner(threading.Thread):
         action_index = np.random.choice(self.action_size, 1, p=policy.numpy())[0]
         return action_index, policy
 
-    # 테스트시 사용 -> 최대 확률 값을 행동으로 선택
+    # [test] : 최대 확률 값을 행동으로 선택
     def test_get_action(self, c_observed, b_observed) :
         c_observed, b_observed = self.reshape_state(c_observed, b_observed)
         policy = self.local_model([c_observed, b_observed])[0][0]
@@ -84,7 +85,7 @@ class Learner(threading.Thread):
         action_index = np.argmax(policy.numpy())
         return action_index, policy
 
-    # 무작위 행동 테스트
+    # [monkey] : 무작위 행동 선택, policy = [1/n, 1/n, ..., 1/n]
     def monkey_get_action(self) :
         action_index = np.random.randint(self.action_size)
         policy = [1/self.action_size for _ in range(self.action_size)]
@@ -113,18 +114,19 @@ class Learner(threading.Thread):
             discounted_prediction[t] = running_add
         return discounted_prediction
 
-    # 저장된 샘플들로 A3C의 오류함수를 계산
+    # Loss function 계산
     def compute_loss(self, done) :
         discounted_prediction = self.discounted_prediction(self.rewards, done)
         discounted_prediction = tf.convert_to_tensor(discounted_prediction, dtype=tf.float32)
         self.chart_states, self.balance_states = self.reshape_state(self.chart_states, self.balance_states)
         policy, values = self.local_model([self.chart_states, self.balance_states])
 
-        # 가치 신경망 업데이트
+        # (value prediction - value) -> advantage
         advantages = discounted_prediction - values
+        # critic loss = 1/2(advantage)^2 
         critic_loss = 0.5 * tf.reduce_sum(tf.square(advantages))
 
-        # 정책 신경망 업데이트
+        # policy network(=actor) loss 계산
         action = tf.convert_to_tensor(self.actions, dtype=tf.float32)
         policy_prob = tf.convert_to_tensor(utils.softmax(policy))
         action_prob = tf.reduce_sum(action * policy_prob, axis=1, keepdims=True)
@@ -132,6 +134,8 @@ class Learner(threading.Thread):
         actor_loss = tf.reduce_sum(cross_entropy * tf.stop_gradient(advantages))
         entropy = tf.reduce_sum(policy_prob * tf.math.log(policy_prob + 1e-10), axis=1)
         entropy = tf.reduce_sum(entropy)
+
+        # actor loss 와 critic loss를 비율에 따라 반영.
         actor_loss += 0.01 * entropy
         total_loss = 0.5 * critic_loss + actor_loss
 
@@ -155,6 +159,7 @@ class Learner(threading.Thread):
         # (4) initialize sample
         self.chart_states, self.balance_states, self.actions, self.rewards = [], [], [], []
 
+    # [train, update] : 강화학습 훈련, 업데이트 실행 부분. 
     def run(self):
         # 액터러너끼리 공유해야하는 글로벌 변수
         global episode
@@ -188,7 +193,7 @@ class Learner(threading.Thread):
                         f'profitloss:{self.env.profitloss:.6f}')
 
 
-
+    # [test] : 강화학습 테스트 부분. 
     def test(self) :
         # 메모리 생성
         memory = []
@@ -220,6 +225,7 @@ class Learner(threading.Thread):
                 pd.DataFrame(memory).to_csv(os.path.join(utils.BASE_DIR, 'test', f'{self.code}_{self.model}_{self.start_date}_{self.end_date}.csv'), index=False)
 
 
+    # [test] : 무작위 행동 선택. 
     def monkey(self) :
         memory = []
         # 환경 초기화 및 초기 관찰값 확인
@@ -228,7 +234,7 @@ class Learner(threading.Thread):
         while not done :
             # 행동 전 가격, 현재 포지션 정보 기록
             memo_dict = {'close' : self.env.get_price(), 'position' : self.env.position}
-            # 정책 확률에 따라 행동을 선택
+            # 무작위 행동을 선택, policy = [1/n, 1/n, ..., 1/n]
             action, policy = self.monkey_get_action()
             # 선택한 행동으로 환경에서 한 타임스텝 진행
             _, _, reward, done, trading_unit = self.env.step(action, policy)

@@ -8,7 +8,7 @@ import utils
 from network import *
 from learner import *
 
-# 브레이크아웃에서의 A3CAgent 클래스 (글로벌신경망)
+# A3CAgent 클래스
 class A3CAgent():
     def __init__(self, code, model, n_steps, chart_size, balance_size, action_size, reuse_model=None, 
                     chart_data=None, training_data=None, initial_balance=100000000, 
@@ -55,23 +55,24 @@ class A3CAgent():
         if reuse_model :
             self.global_model.load_weights(self.model_path)
 
-    # 쓰레드를 만들어 학습을 하는 함수
+    # 모델 훈련 및 업데이트(--mode : train, update)
     def train(self):
         # 쓰레드 수 만큼 Runner 클래스 생성
         runners = [Learner(self.code, self.model, self.chart_data, self.training_data, self.initial_balance, self.min_trading_price, 
                             self.max_trading_price, self.action_size, self.n_steps, self.chart_size, 
                             self.balance_size, self.global_model, self.optimizer, 
                             self.discount_factor) for _ in range(self.threads)]
-        # 각 쓰레드 시정
+        # 각 쓰레드 실행
         for i, runner in enumerate(runners):
             print("START WORKER #{:d}".format(i))
             runner.start()
 
-        # 10분 (600초)에 한 번씩 모델을 저장
+        # 30분 (1800초)에 한 번씩 모델을 저장
         while True:
             self.global_model.save_weights(self.model_path, save_format="tf")
-            time.sleep(60 * 10)
+            time.sleep(60 * 30)
     
+    # 모델 테스트(--mode : test)
     def test(self) :
         runner = Learner(self.code, self.model, self.chart_data, self.training_data, self.initial_balance, self.min_trading_price, 
                             self.max_trading_price, self.action_size, self.n_steps, self.chart_size, 
@@ -80,6 +81,7 @@ class A3CAgent():
         print('START TEST')
         runner.test()
     
+    # 랜덤 행동 결정(--mode : monkey)
     def monkey(self) :
         runner = Learner(self.code, self.model, self.chart_data, self.training_data, self.initial_balance, self.min_trading_price, 
                             self.max_trading_price, self.action_size, self.n_steps, self.chart_size, 

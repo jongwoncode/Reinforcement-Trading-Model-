@@ -1,23 +1,28 @@
 import numpy as np
 
 '''
-Environment : 선물 거래를 염두한 행동 전략(long-short 배팅 가능)
+Environment : 선물 거래용 가상 환경 구현 (Long/Short(=매수/매도 or 공매도))
     [Long-Short position]
-        1. [훈련] Action에 의해 결정된 short position 물량이 현재 long 포지션의 물량을 넘으면 long 포지션을 모두 청산(close)하고 남은 물량을 open short
-        2. [실전] Model을 수정.(+ 고립, 격리 반영)
-
-    [state]
+        0. Short : 매도 or 공매도/숏 포지션 
+            - Action에 의해 결정된 short position 물량이 현재 long 포지션의 물량을 넘으면 long 포지션을 모두 청산(close)하고 남은 물량을 open short
+        1. None : 포지션 없음
+        2. Long : 매수/롱 포지션 
+        
+        
+    [balance state]
         1. 포지션_자금 비율      : postion_(t)/portfolio_value_(t)
         2. 손익                 : portfolio_value_(t)/portfolio_value_(0)
-        3. 현재 포지션           : SHORT = 0, LONG = 1
+        3. 현재 포지션           : SHORT = 0, NONE = 1, LONG = 2
         4. 평균 수익률
-            * [LONG position]  close_price_(t) - mean_position_price_(t)
-            * [SHORT position] mean_position_price_(t) - close_price_()
-        
-    [Slippage]
-        1. 훈련 단계에서는 Slippage 적용. (현재 미적용)     
-        2. 실제 거래 단계에서는 api를 통해 실제 balance를 조회하여 적용.
+            * [LONG position]  : close_price_(t) - mean_position_price_(t)
+            * [SHORT position] : mean_position_price_(t) - close_price_(t)
+
+        5. 포트폴리오 가치(portfolio_value) 갱신
+            * LONG, NONE 포지션 : 포트폴리오 가치(t) = 잔고(t) + 종가(t) X 보유 주식수(t)
+            * SHORT 포지션 : 포트폴리오 가치(t) = 잔고(t) + (평균 매도 가격(t) - 종가(t)) X 매도 주식수(t) 
+                                                        + 평균 매도 가격(t) X 매도 주식수(t)
 '''
+
 
 class Environment() :
     # agent balance state : [포지션/자금 비율, 손익, 평균 수익률, 현재 포지션]
