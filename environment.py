@@ -66,7 +66,7 @@ class Environment() :
         self.num_hold = 0                # 관망 횟수
 
         #___balance : agent의 state 정보
-        self.ratio_hold = 0              # 주식 보유 비율
+        self.hold_ratio = 0              # 주식 보유 비율
         self.profitloss = 0              # 현재 손익
         self.avg_position_price = 0      # 주당 매수 단가
         self.position = 1                # 현재 포지션
@@ -77,7 +77,7 @@ class Environment() :
         self.balance = self.initial_balance
         self.portfolio_value = self.initial_balance
         self.num_stocks = 0
-        self.ratio_hold = 0
+        self.hold_ratio = 0
         self.profitloss = 0
         self.avg_position_price = 0
         self.position = 1
@@ -290,8 +290,11 @@ class Environment() :
         else :
             self.portfolio_value = self.balance + (self.avg_position_price - curr_price) * abs(self.num_stocks) \
                                                 + self.avg_position_price*abs(self.num_stocks)
-
+        # (6) 손익 갱신
         self.profitloss = self.portfolio_value / self.initial_balance - 1
+        
+        # (7) 포지션 보유 비율 갱신
+        self.hold_ratio = (self.portfolio_value-self.balance)/self.portfolio_value
         return self.profitloss, trading_unit
 
 
@@ -305,9 +308,9 @@ class Environment() :
             return None, None, 0, done, None
         # 훈련 시작 전 초기 데이터 반환
         if action == None :
-            avg_return = (self.avg_position_price / self.get_price()) - 1
+            avg_return = 0
             c_next_state = self.training_data[self.idx]
-            b_next_state = (self.ratio_hold, self.profitloss, avg_return, self.position)
+            b_next_state = (self.hold_ratio, self.profitloss, avg_return, self.position)
             done = False
             return c_next_state, b_next_state, 0, done, None
         
@@ -318,10 +321,17 @@ class Environment() :
             # 행동 수행 및 보상 출력
             reward, trading_unit = self.act(action, confidence)
             # 현재 종가 대비 평균 수익률
-            avg_return = (self.avg_position_price / self.get_price()) - 1
+            if self.position == Environment.LONG_POSITION :
+                avg_return = (self.avg_position_price / self.get_price()) - 1
+
+            elif self.position == Environment.NONE_POSITION :
+                avg_return = 0
+            else :
+                avg_return = (self.avg_position_price - self.get_price())/self.avg_position_price
+
             # chart state, balance state 계산
             c_next_state = self.training_data[self.idx]
-            b_next_state = (self.ratio_hold, self.profitloss, avg_return, self.position)
+            b_next_state = (self.hold_ratio, self.profitloss, avg_return, self.position)
             done = False
             # 원금 대비 -20% 손실 나면 epoch 종료. 
             if self.portfolio_value < self.initial_balance*0.20 :
