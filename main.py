@@ -32,6 +32,7 @@ if __name__ == "__main__" :
     # 출력 경로 없다면 생성
     if not os.path.isdir(output_path):
         os.makedirs(output_path)
+        
     # 기존에 로그 파일이 있다면 제거
     if os.path.exists(log_path):
         os.remove(log_path)
