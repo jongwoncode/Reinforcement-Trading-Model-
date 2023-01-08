@@ -2,6 +2,7 @@ import time
 import datetime
 import os
 import numpy as np
+import tensorflow as tf
 
 BASE_DIR = os.getcwd()
 LOGGER_NAME = 'rltrader'
@@ -12,8 +13,8 @@ def get_time_str():
         int(time.time())).strftime(FORMAT_DATETIME)
 
 def softmax(x) : 
-    c = np.max(x) 
-    exp_a = np.exp(x-c) 
-    sum_exp_a = np.sum(exp_a)
+    c = tf.reduce_max(x) 
+    exp_a = tf.math.exp(x-c) 
+    sum_exp_a = tf.reduce_sum(exp_a)
     y = exp_a / sum_exp_a
     return y
