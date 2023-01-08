@@ -1,5 +1,5 @@
 import os
-import time
+import csv
 import utils
 import threading
 import logging
@@ -16,6 +16,7 @@ global episode
 episode= 0
 num_episode = 20000
 logger = logging.getLogger(utils.LOGGER_NAME)
+
 
 # 액터러너 클래스 (쓰레드)
 class Learner(threading.Thread):
@@ -73,7 +74,11 @@ class Learner(threading.Thread):
     def get_action(self, c_observed, b_observed) :
         c_observed, b_observed = self.reshape_state(c_observed, b_observed)
         policy = self.local_model([c_observed, b_observed])[0][0]
+        
+        # action space 출력 결과를 softmax 함수로 변화하여 확률 분포 생성
         policy = tf.convert_to_tensor(utils.softmax(policy))
+        
+        # softmax에 의해 변환된 확률 분포에 따라서 action 선택 
         action_index = np.random.choice(self.action_size, 1, p=policy.numpy())[0]
         return action_index, policy
 
@@ -81,7 +86,9 @@ class Learner(threading.Thread):
     def test_get_action(self, c_observed, b_observed) :
         c_observed, b_observed = self.reshape_state(c_observed, b_observed)
         policy = self.local_model([c_observed, b_observed])[0][0]
+        # action space 출력 결과를 softmax 함수로 변환하여 확률 분포 생성
         policy = tf.convert_to_tensor(utils.softmax(policy))
+        # 가장 최적의 action 선택
         action_index = np.argmax(policy.numpy())
         return action_index, policy
 
@@ -122,22 +129,27 @@ class Learner(threading.Thread):
         policy, values = self.local_model([self.chart_states, self.balance_states])
 
         # (value prediction - value) -> advantage
-        advantages = discounted_prediction - values
-        # critic loss = 1/2(advantage)^2 
-        critic_loss = 0.5 * tf.reduce_sum(tf.square(advantages))
+        advantages = 0.5*(discounted_prediction - values)
+        # critic loss = (advantage)^2 
+        critic_loss = tf.reduce_sum(tf.square(advantages))
 
         # policy network(=actor) loss 계산
         action = tf.convert_to_tensor(self.actions, dtype=tf.float32)
         policy_prob = tf.convert_to_tensor(utils.softmax(policy))
         action_prob = tf.reduce_sum(action * policy_prob, axis=1, keepdims=True)
         cross_entropy = - tf.math.log(action_prob + 1e-10)
-        actor_loss = tf.reduce_sum(cross_entropy * tf.stop_gradient(advantages))
+        actor_loss = tf.reduce_sum(cross_entropy * tf.stop_gradient(0.1*advantages))
         entropy = tf.reduce_sum(policy_prob * tf.math.log(policy_prob + 1e-10), axis=1)
-        entropy = tf.reduce_sum(entropy)
+        entropy = 0.1*tf.reduce_sum(entropy)
 
-        # actor loss 와 critic loss를 비율에 따라 반영.
-        actor_loss += 0.01 * entropy
-        total_loss = 0.5 * critic_loss + actor_loss
+        # actor loss 와 critic loss를 비율에 따라 반영. (loss 출력 후 tunning 작업 진행)
+        total_loss = critic_loss + actor_loss + entropy
+        
+        # loss tracking을 위한 csv 저장.
+        loss_path = os.path.join(utils.BASE_DIR, 'log', 'loss', f'{self.model}_{self.n_steps}.csv')
+        with open(loss_path, 'a', newline='') as file :
+            writer = csv.writer(file)
+            writer.writerow([total_loss.numpy(), critic_loss.numpy(), actor_loss.numpy(), entropy.numpy()])
 
         return total_loss
 
@@ -191,6 +203,12 @@ class Learner(threading.Thread):
                         f'#Buy:{self.env.num_long} #Sell:{self.env.num_short} #Hold:{self.env.num_hold} '
                         f'#Stocks:{self.env.num_stocks} PV:{self.env.portfolio_value:,.0f} '
                         f'profitloss:{self.env.profitloss:.6f}')
+
+            # tracking을 위해 episode 종료 후 reward 저장
+            reward_path = os.path.join(utils.BASE_DIR, 'log', 'reward', f'reward_{self.model}_{self.n_steps}.csv')
+            with open(reward_path, 'a', newline='') as file :
+                writer = csv.writer(file)
+                writer.writerow(self.env.profitloss)
 
 
     # [test] : 강화학습 테스트 부분. 
