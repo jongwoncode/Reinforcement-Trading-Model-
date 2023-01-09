@@ -1,0 +1,2 @@
+{"name": "202301091448", "code": "005380", "model": "LSTMDNN", "mode": "test", "start_date": "20210101", "end_date": "20221220", "lr": 1e-05, "n_steps": 10, "balance": 100000000}
+[005380][TEST] #Buy:10 #Sell:31 #Hold:359 #Stocks:-110 PV:101,564,593 profitloss:0.015646

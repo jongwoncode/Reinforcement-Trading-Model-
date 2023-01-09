@@ -1,1 +1,1 @@
-{"name": "202301082121", "code": "005380", "model": "LSTMDNN", "mode": "train", "start_date": "20180601", "end_date": "20221220", "lr": 0.0001, "n_steps": 10, "balance": 100000000}
+{"name": "202301091448", "code": "005380", "model": "LSTMDNN", "mode": "test", "start_date": "20210101", "end_date": "20221220", "lr": 1e-05, "n_steps": 10, "balance": 100000000}

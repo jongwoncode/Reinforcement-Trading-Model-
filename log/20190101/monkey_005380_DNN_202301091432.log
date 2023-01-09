@@ -1,0 +1,2 @@
+{"name": "202301091432", "code": "005380", "model": "DNN", "mode": "monkey", "start_date": "20190101", "end_date": "20221220", "lr": 1e-05, "n_steps": 10, "balance": 100000000}
+[005380][MONKEY] #Buy:287 #Sell:299 #Hold:318 #Stocks:-7 PV:96,169,334 profitloss:-0.038307
