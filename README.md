@@ -6,7 +6,7 @@
 * 📆 프로젝트 기간  : 2022.12.15 ~ 2023.01.08
 * 💻 사용 모델     : 강화학습 알고리즘(A3C), 신경망 모델(LSTM-DNN custom model)
 * 🤖 주요 사용 기술  : python, tensorflow, keras, multi-processing
-* 🤑 프로젝트 설명 : [종원이의 Velog](https://velog.io/@leejong)
+* 🤑 프로젝트 설명 : [종원이의 Velog](https://velog.io/@leejong/Project-강화학습을-활용한-트레이딩-봇)
 
 
 <br>
